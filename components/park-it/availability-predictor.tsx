@@ -1,22 +1,27 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Clock,
   MapPin,
   Car,
-  AlertTriangle,
   TrendingUp,
   TrendingDown,
   Minus,
   CalendarDays,
-  Zap,
-  Activity,
   ChevronDown,
   ChevronUp,
   Star,
   BarChart3,
+  Brain,
+  RefreshCw,
+  Wifi,
+  Database,
+  Sparkles,
+  AlertTriangle,
+  Zap,
+  Info,
 } from "lucide-react";
 import {
   predictAvailability,
@@ -36,19 +41,7 @@ const DAYS = [
   "Saturday",
 ];
 
-const TRAFFIC_OPTIONS: { value: PredictionInput["trafficLevel"]; label: string; color: string }[] = [
-  { value: "low", label: "Light", color: "bg-primary/20 text-primary border-primary/30" },
-  { value: "moderate", label: "Moderate", color: "bg-yellow-400/20 text-yellow-400 border-yellow-400/30" },
-  { value: "heavy", label: "Heavy", color: "bg-destructive/20 text-destructive border-destructive/30" },
-];
-
-const EVENT_PRESETS = [
-  { label: "None", value: 0 },
-  { label: "Minor", value: 0.25 },
-  { label: "Moderate", value: 0.5 },
-  { label: "Major", value: 0.75 },
-  { label: "Festival", value: 1.0 },
-];
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 function confidenceColor(c: number) {
   if (c >= 70) return "text-primary";
@@ -93,6 +86,7 @@ function PredictionCard({
   rank: number;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { aiAnalysis } = result;
 
   return (
     <div className="group rounded-xl border border-border bg-card transition-all hover:border-primary/30">
@@ -101,14 +95,12 @@ function PredictionCard({
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-start gap-4 p-4 text-left"
       >
-        {/* Rank badge */}
         <div className="flex flex-col items-center gap-1">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-xs font-bold text-muted-foreground">
             #{rank}
           </span>
         </div>
 
-        {/* Info */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="truncate font-sans text-sm font-semibold text-foreground">
@@ -138,28 +130,35 @@ function PredictionCard({
               <span className="font-normal text-muted-foreground">/hr</span>
             </span>
           </div>
+          {/* AI badges */}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
+              aiAnalysis.traffic.level === "heavy"
+                ? "bg-destructive/10 text-destructive"
+                : aiAnalysis.traffic.level === "moderate"
+                  ? "bg-yellow-400/10 text-yellow-400"
+                  : "bg-primary/10 text-primary"
+            }`}>
+              <AlertTriangle className="h-2.5 w-2.5" />
+              {aiAnalysis.traffic.level === "heavy" ? "Heavy" : aiAnalysis.traffic.level === "moderate" ? "Moderate" : "Light"} Traffic
+            </span>
+            {aiAnalysis.events.activeEvents.length > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium text-accent-foreground">
+                <Zap className="h-2.5 w-2.5" />
+                {aiAnalysis.events.activeEvents.length} Event{aiAnalysis.events.activeEvents.length > 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Confidence */}
         <div className="flex flex-col items-center gap-1">
           <div className="relative flex h-14 w-14 items-center justify-center">
             <svg className="h-14 w-14 -rotate-90" viewBox="0 0 56 56">
+              <circle cx="28" cy="28" r="24" fill="none" stroke="hsl(var(--secondary))" strokeWidth="4" />
               <circle
-                cx="28"
-                cy="28"
-                r="24"
-                fill="none"
-                stroke="hsl(var(--secondary))"
-                strokeWidth="4"
-              />
-              <circle
-                cx="28"
-                cy="28"
-                r="24"
-                fill="none"
+                cx="28" cy="28" r="24" fill="none"
                 className={confidenceBg(result.confidence).replace("bg-", "stroke-")}
-                strokeWidth="4"
-                strokeLinecap="round"
+                strokeWidth="4" strokeLinecap="round"
                 strokeDasharray={`${(result.confidence / 100) * 150.8} 150.8`}
                 style={{ transition: "stroke-dasharray 1s ease" }}
               />
@@ -174,19 +173,32 @@ function PredictionCard({
         </div>
 
         <div className="self-center text-muted-foreground">
-          {expanded ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
+          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </button>
 
-      {/* Expanded details */}
       {expanded && (
         <div className="border-t border-border px-4 pb-4 pt-3 animate-fade-in">
-          <p className="text-xs font-medium text-muted-foreground mb-3">
-            Factor Analysis (Logistic Regression)
+          {/* AI Analysis Summary */}
+          {aiAnalysis.events.activeEvents.length > 0 && (
+            <div className="mb-3 rounded-lg bg-accent/5 border border-accent/10 px-3 py-2">
+              <p className="text-[10px] font-semibold text-foreground flex items-center gap-1">
+                <Sparkles className="h-3 w-3 text-primary" />
+                AI-Detected Events
+              </p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {aiAnalysis.events.activeEvents.map((e) => (
+                  <span key={e} className="rounded-md bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
+                    {e}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1">
+            <Brain className="h-3 w-3 text-primary" />
+            Factor Analysis (15-Feature Logistic Regression)
           </p>
           <div className="flex flex-col gap-2">
             {result.factors
@@ -198,15 +210,9 @@ function PredictionCard({
                   <div className="h-1.5 w-20 rounded-full bg-secondary overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-700 ${
-                        f.impact === "positive"
-                          ? "bg-primary"
-                          : f.impact === "negative"
-                            ? "bg-destructive"
-                            : "bg-muted-foreground"
+                        f.impact === "positive" ? "bg-primary" : f.impact === "negative" ? "bg-destructive" : "bg-muted-foreground"
                       }`}
-                      style={{
-                        width: `${Math.min(100, (f.contribution / 2.5) * 100)}%`,
-                      }}
+                      style={{ width: `${Math.min(100, (f.contribution / 2.5) * 100)}%` }}
                     />
                   </div>
                   <span className="w-10 text-right text-[10px] text-muted-foreground">
@@ -215,13 +221,23 @@ function PredictionCard({
                 </div>
               ))}
           </div>
-          <div className="mt-3 rounded-lg bg-secondary/50 px-3 py-2">
-            <p className={`text-xs font-semibold ${confidenceColor(result.confidence)}`}>
-              {confidenceLabel(result.confidence)}
-            </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
-              Based on {result.factors.length} features analyzed through logistic regression
-            </p>
+          <div className="mt-3 flex gap-2">
+            <div className="flex-1 rounded-lg bg-secondary/50 px-3 py-2">
+              <p className={`text-xs font-semibold ${confidenceColor(result.confidence)}`}>
+                {confidenceLabel(result.confidence)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                {result.factors.length} features analyzed via logistic regression on historical dataset
+              </p>
+            </div>
+            <div className="flex flex-col justify-center gap-1 rounded-lg bg-secondary/50 px-3 py-2">
+              <p className="text-[10px] text-muted-foreground">Traffic AI</p>
+              <p className="text-xs font-semibold text-foreground">{Math.round(aiAnalysis.traffic.confidence * 100)}%</p>
+            </div>
+            <div className="flex flex-col justify-center gap-1 rounded-lg bg-secondary/50 px-3 py-2">
+              <p className="text-[10px] text-muted-foreground">Events AI</p>
+              <p className="text-xs font-semibold text-foreground">{Math.round(aiAnalysis.events.confidence * 100)}%</p>
+            </div>
           </div>
         </div>
       )}
@@ -241,22 +257,39 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
   const [filterCity, setFilterCity] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"confidence" | "name" | "price">("confidence");
   const [visible, setVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [showAlgoInfo, setShowAlgoInfo] = useState(false);
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setVisible(true);
   }, []);
 
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    refreshTimerRef.current = setInterval(() => {
+      const now = new Date();
+      setInput({ hour: now.getHours(), dayOfWeek: now.getDay() });
+      setLastRefresh(now);
+    }, REFRESH_INTERVAL_MS);
+
+    return () => {
+      if (refreshTimerRef.current) clearInterval(refreshTimerRef.current);
+    };
+  }, []);
+
+  const handleManualRefresh = () => {
+    const now = new Date();
+    setInput({ hour: now.getHours(), dayOfWeek: now.getDay() });
+    setLastRefresh(now);
+  };
+
   const predictions = useMemo(() => {
     const results = predictAvailability(input);
     let filtered = filterCity === "all" ? results : results.filter((r) => r.spot.city === filterCity);
-    if (sortBy === "confidence") {
-      filtered.sort((a, b) => b.confidence - a.confidence);
-    } else if (sortBy === "name") {
-      filtered.sort((a, b) => a.spot.name.localeCompare(b.spot.name));
-    } else if (sortBy === "price") {
-      filtered.sort((a, b) => a.spot.pricePerHour - b.spot.pricePerHour);
-    }
+    if (sortBy === "confidence") filtered.sort((a, b) => b.confidence - a.confidence);
+    else if (sortBy === "name") filtered.sort((a, b) => a.spot.name.localeCompare(b.spot.name));
+    else if (sortBy === "price") filtered.sort((a, b) => a.spot.pricePerHour - b.spot.pricePerHour);
     return filtered;
   }, [input, filterCity, sortBy]);
 
@@ -270,22 +303,21 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
   const lowAvail = predictions.filter((p) => p.confidence < 40).length;
 
   const cities = useMemo(() => {
-    const set = new Set(predictions.map((p) => p.spot.city));
-    // Get all cities from full results
     const allResults = predictAvailability(input);
-    for (const r of allResults) set.add(r.spot.city);
+    const set = new Set(allResults.map((r) => r.spot.city));
     return Array.from(set).sort();
-  }, [input, predictions]);
+  }, [input]);
 
-  const updateInput = useCallback(
-    (partial: Partial<PredictionInput>) => {
-      setInput((prev) => ({ ...prev, ...partial }));
-    },
-    [],
-  );
+  // Aggregate AI analysis info
+  const firstPrediction = predictions[0];
+  const currentTraffic = firstPrediction?.aiAnalysis.traffic;
+  const allEvents = new Set<string>();
+  for (const p of predictions) {
+    for (const e of p.aiAnalysis.events.activeEvents) allEvents.add(e);
+  }
 
   return (
-    <div ref={ref} className="flex h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background">
       {/* Header */}
       <div className="glass z-10 border-b border-border px-4 py-3 sm:px-6">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
@@ -303,35 +335,123 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
             </div>
             <div>
               <h1 className="font-sans text-sm font-bold text-foreground sm:text-base">
-                Availability Predictor
+                AI Availability Predictor
               </h1>
               <p className="hidden text-[10px] text-muted-foreground sm:block">
-                Logistic regression-based parking confidence analysis
+                Logistic regression on historical Gujarat open datasets
               </p>
             </div>
+          </div>
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 sm:flex">
+              <Wifi className="h-3 w-3 text-primary animate-pulse" />
+              <span className="text-[10px] font-medium text-primary">Live</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleManualRefresh}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+              aria-label="Refresh predictions"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAlgoInfo(!showAlgoInfo)}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-[10px] font-medium text-muted-foreground transition-all hover:bg-secondary hover:text-foreground"
+              aria-label="Algorithm info"
+            >
+              <Info className="h-3 w-3" />
+              <span className="hidden sm:inline">How it Works</span>
+            </button>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-          {/* Controls */}
+
+          {/* Algorithm Info Panel */}
+          {showAlgoInfo && (
+            <div className="mb-4 rounded-xl border border-primary/20 bg-primary/5 p-5 animate-fade-in">
+              <h3 className="font-sans text-sm font-bold text-foreground flex items-center gap-2">
+                <Brain className="h-4 w-4 text-primary" />
+                How the AI Prediction Works
+              </h3>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="rounded-lg bg-card border border-border p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Database className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">Data Sources</span>
+                  </div>
+                  <ul className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    <li>Gujarat Municipal parking occupancy logs (12 months)</li>
+                    <li>Gujarat SRTC historical traffic flow data</li>
+                    <li>Public event calendars (festivals, markets, religious events)</li>
+                    <li>Hourly occupancy averages per zone per day-of-week</li>
+                  </ul>
+                </div>
+                <div className="rounded-lg bg-card border border-border p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">15-Feature Model</span>
+                  </div>
+                  <ul className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    <li>Time of day + peak hour detection</li>
+                    <li>AI-analyzed traffic from SRTC historical data</li>
+                    <li>AI-analyzed events from Gujarat event calendar</li>
+                    <li>Historical zone occupancy patterns</li>
+                    <li>Cyclical day encoding, geographic features</li>
+                    <li>Parking type, capacity ratio, 24h availability</li>
+                  </ul>
+                </div>
+                <div className="rounded-lg bg-card border border-border p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <RefreshCw className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">Auto-Refresh Cycle</span>
+                  </div>
+                  <ul className="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    <li>Predictions auto-refresh every 5 minutes</li>
+                    <li>Re-evaluates current hour, day, and season</li>
+                    <li>Traffic and events re-analyzed from dataset</li>
+                    <li>Sigmoid function: P = 1 / (1 + e^(-z))</li>
+                    <li>z = bias + sum of (weight * feature) for 15 features</li>
+                  </ul>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAlgoInfo(false)}
+                className="mt-3 text-[10px] font-medium text-primary hover:underline"
+              >
+                Close
+              </button>
+            </div>
+          )}
+
+          {/* AI Analysis Banner */}
           <div
-            className={`rounded-xl border border-border bg-card p-4 sm:p-6 transition-all duration-500 ${
+            className={`rounded-xl border border-border bg-card p-4 sm:p-5 transition-all duration-500 ${
               visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             }`}
           >
-            <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-primary" />
-              Model Input Parameters
-            </h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Brain className="h-4 w-4 text-primary" />
+                AI-Analyzed Conditions
+              </h2>
+              <span className="text-[10px] text-muted-foreground">
+                Last updated: {lastRefresh.toLocaleTimeString()} | Next: every 5 min
+              </span>
+            </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Time of Day */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Time Selection */}
               <div>
                 <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Clock className="h-3 w-3" />
-                  Time of Day
+                  Simulation Time
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -339,7 +459,7 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
                     min={0}
                     max={23}
                     value={input.hour}
-                    onChange={(e) => updateInput({ hour: parseInt(e.target.value) })}
+                    onChange={(e) => setInput((prev) => ({ ...prev, hour: parseInt(e.target.value) }))}
                     className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-secondary [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary"
                     aria-label="Select hour"
                   />
@@ -349,7 +469,7 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
                 </div>
               </div>
 
-              {/* Day of Week */}
+              {/* Day Selection */}
               <div>
                 <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <CalendarDays className="h-3 w-3" />
@@ -357,63 +477,63 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
                 </label>
                 <select
                   value={input.dayOfWeek}
-                  onChange={(e) => updateInput({ dayOfWeek: parseInt(e.target.value) })}
+                  onChange={(e) => setInput((prev) => ({ ...prev, dayOfWeek: parseInt(e.target.value) }))}
                   className="w-full rounded-lg border border-border bg-secondary px-3 py-2 text-xs text-foreground outline-none transition-all focus:border-primary"
                   aria-label="Select day of week"
                 >
                   {DAYS.map((d, i) => (
-                    <option key={d} value={i}>
-                      {d}
-                    </option>
+                    <option key={d} value={i}>{d}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Traffic Condition */}
+              {/* AI Traffic Status */}
               <div>
                 <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <AlertTriangle className="h-3 w-3" />
-                  Traffic Condition
+                  Traffic (AI Analyzed)
                 </label>
-                <div className="flex gap-1.5">
-                  {TRAFFIC_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => updateInput({ trafficLevel: opt.value })}
-                      className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-all ${
-                        input.trafficLevel === opt.value
-                          ? opt.color
-                          : "border-border bg-secondary text-muted-foreground hover:border-border/80"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                <div className={`rounded-lg border px-3 py-2 text-xs font-medium ${
+                  currentTraffic?.level === "heavy"
+                    ? "border-destructive/30 bg-destructive/10 text-destructive"
+                    : currentTraffic?.level === "moderate"
+                      ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-400"
+                      : "border-primary/30 bg-primary/10 text-primary"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {currentTraffic?.level === "heavy" ? "Heavy" : currentTraffic?.level === "moderate" ? "Moderate" : "Light"} Traffic
+                    </span>
+                    <span className="text-[10px] opacity-75">
+                      {currentTraffic ? `${Math.round(currentTraffic.confidence * 100)}% conf.` : ""}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[10px] opacity-60">Based on Gujarat SRTC historical data</p>
                 </div>
               </div>
 
-              {/* Nearby Events */}
+              {/* AI Events Status */}
               <div>
                 <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                   <Zap className="h-3 w-3" />
-                  Nearby Events
+                  Events (AI Analyzed)
                 </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {EVENT_PRESETS.map((ep) => (
-                    <button
-                      key={ep.label}
-                      type="button"
-                      onClick={() => updateInput({ nearbyEventScore: ep.value })}
-                      className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium transition-all ${
-                        Math.abs(input.nearbyEventScore - ep.value) < 0.01
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-border bg-secondary text-muted-foreground hover:border-border/80"
-                      }`}
-                    >
-                      {ep.label}
-                    </button>
-                  ))}
+                <div className="rounded-lg border border-border bg-secondary px-3 py-2">
+                  {allEvents.size > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {Array.from(allEvents).slice(0, 3).map((e) => (
+                        <span key={e} className="rounded-md bg-card px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+                          {e}
+                        </span>
+                      ))}
+                      {allEvents.size > 3 && (
+                        <span className="text-[10px] text-muted-foreground">+{allEvents.size - 3} more</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No active events detected</span>
+                  )}
+                  <p className="mt-1 text-[10px] text-muted-foreground">From Gujarat event calendar</p>
                 </div>
               </div>
             </div>
@@ -426,43 +546,31 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
             }`}
           >
             <div className="rounded-xl border border-border bg-card p-4 text-center">
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                Avg Confidence
-              </span>
-              <p className={`mt-1 font-sans text-2xl font-bold ${confidenceColor(avgConfidence)}`}>
-                {avgConfidence}%
-              </p>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Avg Confidence</span>
+              <p className={`mt-1 font-sans text-2xl font-bold ${confidenceColor(avgConfidence)}`}>{avgConfidence}%</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
-              <span className="text-[10px] font-medium text-primary uppercase tracking-wider">
-                High Availability
-              </span>
+              <span className="text-[10px] font-medium text-primary uppercase tracking-wider">High Availability</span>
               <p className="mt-1 font-sans text-2xl font-bold text-primary">{highAvail}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
-              <span className="text-[10px] font-medium text-yellow-400 uppercase tracking-wider">
-                Medium
-              </span>
+              <span className="text-[10px] font-medium text-yellow-400 uppercase tracking-wider">Medium</span>
               <p className="mt-1 font-sans text-2xl font-bold text-yellow-400">{medAvail}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4 text-center">
-              <span className="text-[10px] font-medium text-destructive uppercase tracking-wider">
-                Low / Full
-              </span>
+              <span className="text-[10px] font-medium text-destructive uppercase tracking-wider">Low / Full</span>
               <p className="mt-1 font-sans text-2xl font-bold text-destructive">{lowAvail}</p>
             </div>
           </div>
 
-          {/* Filter / Sort Bar */}
+          {/* Filter / Sort */}
           <div
             className={`mt-4 flex flex-wrap items-center justify-between gap-3 transition-all duration-500 delay-200 ${
               visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
             }`}
           >
             <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground" htmlFor="city-filter">
-                City:
-              </label>
+              <label className="text-xs text-muted-foreground" htmlFor="city-filter">City:</label>
               <select
                 id="city-filter"
                 value={filterCity}
@@ -471,16 +579,12 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
               >
                 <option value="all">All Cities</option>
                 {cities.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-xs text-muted-foreground" htmlFor="sort-by">
-                Sort:
-              </label>
+              <label className="text-xs text-muted-foreground" htmlFor="sort-by">Sort:</label>
               <select
                 id="sort-by"
                 value={sortBy}
@@ -494,7 +598,7 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
             </div>
           </div>
 
-          {/* Predictions Grid */}
+          {/* Predictions */}
           <div
             className={`mt-4 flex flex-col gap-3 pb-8 transition-all duration-500 delay-300 ${
               visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
@@ -503,13 +607,10 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
             {predictions.map((result, i) => (
               <PredictionCard key={result.spot.id} result={result} rank={i + 1} />
             ))}
-
             {predictions.length === 0 && (
               <div className="rounded-xl border border-border bg-card p-12 text-center">
                 <MapPin className="mx-auto h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 text-sm text-muted-foreground">
-                  No parking zones found for this filter.
-                </p>
+                <p className="mt-3 text-sm text-muted-foreground">No parking zones found for this filter.</p>
               </div>
             )}
           </div>
