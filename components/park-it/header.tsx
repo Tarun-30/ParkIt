@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { MapPin, Menu, X } from "lucide-react";
 
-export function Header({ onGetStarted }: { onGetStarted: () => void }) {
+export function Header({ onGetStarted, onOpenPredictor }: { onGetStarted: () => void; onOpenPredictor?: () => void }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -36,6 +36,7 @@ export function Header({ onGetStarted }: { onGetStarted: () => void }) {
             <button
               key={item}
               type="button"
+              onClick={item === "Features" ? onOpenPredictor : undefined}
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               {item}
@@ -70,6 +71,7 @@ export function Header({ onGetStarted }: { onGetStarted: () => void }) {
               <button
                 key={item}
                 type="button"
+                onClick={item === "Features" ? () => { onOpenPredictor?.(); setMobileOpen(false); } : undefined}
                 className="text-left text-sm text-muted-foreground transition-colors hover:text-foreground py-2"
               >
                 {item}

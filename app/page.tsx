@@ -8,19 +8,26 @@ import { HowItWorks } from "@/components/park-it/how-it-works";
 import { Coverage } from "@/components/park-it/coverage";
 import { Footer } from "@/components/park-it/footer";
 import { Dashboard } from "@/components/park-it/dashboard";
+import { AvailabilityPredictor } from "@/components/park-it/availability-predictor";
+
+type View = "landing" | "dashboard" | "predictor";
 
 export default function Page() {
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [view, setView] = useState<View>("landing");
 
-  if (showDashboard) {
-    return <Dashboard onBack={() => setShowDashboard(false)} />;
+  if (view === "dashboard") {
+    return <Dashboard onBack={() => setView("landing")} />;
+  }
+
+  if (view === "predictor") {
+    return <AvailabilityPredictor onBack={() => setView("landing")} />;
   }
 
   return (
     <main className="min-h-screen bg-background">
-      <Header onGetStarted={() => setShowDashboard(true)} />
-      <Hero onGetStarted={() => setShowDashboard(true)} />
-      <Features />
+      <Header onGetStarted={() => setView("dashboard")} onOpenPredictor={() => setView("predictor")} />
+      <Hero onGetStarted={() => setView("dashboard")} />
+      <Features onOpenPredictor={() => setView("predictor")} />
       <HowItWorks />
       <Coverage />
 
@@ -39,7 +46,7 @@ export default function Page() {
           </p>
           <button
             type="button"
-            onClick={() => setShowDashboard(true)}
+            onClick={() => setView("dashboard")}
             className="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary px-10 py-4 text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:shadow-primary/30 active:scale-95"
           >
             Get Started Now

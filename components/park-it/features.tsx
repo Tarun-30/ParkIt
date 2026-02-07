@@ -49,7 +49,7 @@ const FEATURES = [
   },
 ];
 
-export function Features() {
+export function Features({ onOpenPredictor }: { onOpenPredictor?: () => void }) {
   const [visible, setVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -98,27 +98,41 @@ export function Features() {
         </div>
 
         <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((feature, i) => (
-            <div
-              key={feature.title}
-              className={`group rounded-xl border border-border bg-card p-6 transition-all duration-500 hover:border-primary/30 hover:bg-secondary ${
-                visible
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-8"
-              }`}
-              style={{ transitionDelay: visible ? `${300 + i * 100}ms` : "0ms" }}
-            >
-              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary transition-all group-hover:bg-primary group-hover:text-primary-foreground">
-                <feature.icon className="h-5 w-5" />
-              </div>
-              <h3 className="font-display font-semibold text-foreground">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+          {FEATURES.map((feature, i) => {
+            const isClickable = feature.title === "Smart Spot Finder";
+            const Wrapper = isClickable ? "button" : "div";
+            return (
+              <Wrapper
+                key={feature.title}
+                type={isClickable ? "button" : undefined}
+                onClick={isClickable ? onOpenPredictor : undefined}
+                className={`group rounded-xl border border-border bg-card p-6 text-left transition-all duration-500 hover:border-primary/30 hover:bg-secondary ${
+                  isClickable ? "cursor-pointer ring-1 ring-primary/20 hover:ring-primary/40" : ""
+                } ${
+                  visible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-8"
+                }`}
+                style={{ transitionDelay: visible ? `${300 + i * 100}ms` : "0ms" }}
+              >
+                <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary transition-all group-hover:bg-primary group-hover:text-primary-foreground">
+                  <feature.icon className="h-5 w-5" />
+                </div>
+                <h3 className="font-sans font-semibold text-foreground">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {feature.description}
+                </p>
+                {isClickable && (
+                  <span className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                    Try Availability Predictor
+                    <span aria-hidden="true">&rarr;</span>
+                  </span>
+                )}
+              </Wrapper>
+            );
+          })}
         </div>
       </div>
     </section>
