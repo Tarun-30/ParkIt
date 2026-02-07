@@ -3,7 +3,20 @@
 import { useState, useEffect } from "react";
 import { MapPin, Menu, X } from "lucide-react";
 
-export function Header({ onGetStarted, onOpenPredictor }: { onGetStarted: () => void; onOpenPredictor?: () => void }) {
+interface HeaderProps {
+  onGetStarted: () => void;
+  onOpenPredictor?: () => void;
+  onOpenCareers?: () => void;
+}
+
+const NAV_ITEMS = [
+  { label: "Features", href: "#features" },
+  { label: "How it Works", href: "#how-it-works" },
+  { label: "API Access", href: "#api-access" },
+  { label: "About Us", href: "#about" },
+];
+
+export function Header({ onGetStarted, onOpenPredictor, onOpenCareers }: HeaderProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -12,6 +25,14 @@ export function Header({ onGetStarted, onOpenPredictor }: { onGetStarted: () => 
     window.addEventListener("scroll", handler);
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  function handleNavClick(href: string) {
+    setMobileOpen(false);
+    const el = document.querySelector(href);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 
   return (
     <header
@@ -32,14 +53,14 @@ export function Header({ onGetStarted, onOpenPredictor }: { onGetStarted: () => 
         </div>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {["Features", "How it Works", "Coverage", "About"].map((item) => (
+          {NAV_ITEMS.map((item) => (
             <button
-              key={item}
+              key={item.label}
               type="button"
-              onClick={item === "Features" ? onOpenPredictor : undefined}
+              onClick={() => handleNavClick(item.href)}
               className="text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              {item}
+              {item.label}
             </button>
           ))}
         </nav>
@@ -67,14 +88,14 @@ export function Header({ onGetStarted, onOpenPredictor }: { onGetStarted: () => 
       {mobileOpen && (
         <div className="glass animate-fade-in-up mt-2 mx-4 rounded-xl p-4 md:hidden">
           <nav className="flex flex-col gap-3">
-            {["Features", "How it Works", "Coverage", "About"].map((item) => (
+            {NAV_ITEMS.map((item) => (
               <button
-                key={item}
+                key={item.label}
                 type="button"
-                onClick={item === "Features" ? () => { onOpenPredictor?.(); setMobileOpen(false); } : undefined}
+                onClick={() => handleNavClick(item.href)}
                 className="text-left text-sm text-muted-foreground transition-colors hover:text-foreground py-2"
               >
-                {item}
+                {item.label}
               </button>
             ))}
             <button

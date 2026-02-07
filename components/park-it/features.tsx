@@ -65,7 +65,7 @@ export function Features({ onOpenPredictor }: { onOpenPredictor?: () => void }) 
   }, []);
 
   return (
-    <section ref={ref} className="relative py-24 lg:py-32">
+    <section ref={ref} id="features" className="relative py-24 lg:py-32">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute top-0 left-0 right-0 h-px bg-border" />
         <div className="absolute bottom-0 left-0 right-0 h-px bg-border" />

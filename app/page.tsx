@@ -5,12 +5,15 @@ import { Header } from "@/components/park-it/header";
 import { Hero } from "@/components/park-it/hero";
 import { Features } from "@/components/park-it/features";
 import { HowItWorks } from "@/components/park-it/how-it-works";
-import { Coverage } from "@/components/park-it/coverage";
+import { AboutSection } from "@/components/park-it/about-section";
+import { ApiAccessSection } from "@/components/park-it/api-access-section";
 import { Footer } from "@/components/park-it/footer";
 import { Dashboard } from "@/components/park-it/dashboard";
 import { AvailabilityPredictor } from "@/components/park-it/availability-predictor";
+import { PrivacyPolicy } from "@/components/park-it/privacy-policy";
+import { CareersSection } from "@/components/park-it/careers-section";
 
-type View = "landing" | "dashboard" | "predictor";
+type View = "landing" | "dashboard" | "predictor" | "privacy" | "careers";
 
 export default function Page() {
   const [view, setView] = useState<View>("landing");
@@ -23,13 +26,29 @@ export default function Page() {
     return <AvailabilityPredictor onBack={() => setView("landing")} />;
   }
 
+  if (view === "privacy") {
+    return <PrivacyPolicy onBack={() => setView("landing")} />;
+  }
+
+  if (view === "careers") {
+    return <CareersSection onBack={() => setView("landing")} />;
+  }
+
   return (
     <main className="min-h-screen bg-background">
-      <Header onGetStarted={() => setView("dashboard")} onOpenPredictor={() => setView("predictor")} />
-      <Hero onGetStarted={() => setView("dashboard")} />
+      <Header
+        onGetStarted={() => setView("dashboard")}
+        onOpenPredictor={() => setView("predictor")}
+        onOpenCareers={() => setView("careers")}
+      />
+      <Hero
+        onGetStarted={() => setView("dashboard")}
+        onExploreMap={() => setView("dashboard")}
+      />
       <Features onOpenPredictor={() => setView("predictor")} />
       <HowItWorks />
-      <Coverage />
+      <ApiAccessSection />
+      <AboutSection />
 
       {/* CTA Section */}
       <section className="relative py-24 lg:py-32 bg-secondary/30">
@@ -54,7 +73,10 @@ export default function Page() {
         </div>
       </section>
 
-      <Footer />
+      <Footer
+        onOpenPrivacy={() => setView("privacy")}
+        onOpenCareers={() => setView("careers")}
+      />
     </main>
   );
 }

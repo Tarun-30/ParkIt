@@ -2,7 +2,24 @@
 
 import { MapPin } from "lucide-react";
 
-export function Footer() {
+interface FooterProps {
+  onNavigate?: (section: string) => void;
+  onOpenPrivacy?: () => void;
+  onOpenCareers?: () => void;
+}
+
+export function Footer({ onNavigate, onOpenPrivacy, onOpenCareers }: FooterProps) {
+  function handleSectionClick(sectionId: string) {
+    if (onNavigate) {
+      onNavigate(sectionId);
+    } else {
+      const el = document.querySelector(`#${sectionId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+  }
+
   return (
     <footer className="border-t border-border bg-card">
       <div className="mx-auto max-w-7xl px-6 py-12">
@@ -49,16 +66,18 @@ export function Footer() {
             <h4 className="text-sm font-semibold text-foreground">Product</h4>
             <ul className="mt-3 flex flex-col gap-2">
               {[
-                "Features",
-                "How it Works",
-                "Pricing",
-                "API Access",
-                "Mobile App",
+                { label: "Features", action: () => handleSectionClick("features") },
+                { label: "How it Works", action: () => handleSectionClick("how-it-works") },
+                { label: "API Access", action: () => handleSectionClick("api-access") },
               ].map((item) => (
-                <li key={item}>
-                  <span className="text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer">
-                    {item}
-                  </span>
+                <li key={item.label}>
+                  <button
+                    type="button"
+                    onClick={item.action}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                  >
+                    {item.label}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -68,15 +87,27 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-foreground">Company</h4>
             <ul className="mt-3 flex flex-col gap-2">
-              {["About Us", "Contact", "Blog", "Careers", "Privacy Policy"].map(
-                (item) => (
-                  <li key={item}>
-                    <span className="text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer">
-                      {item}
-                    </span>
-                  </li>
-                )
-              )}
+              {[
+                { label: "About Us", action: () => handleSectionClick("about") },
+                {
+                  label: "Careers",
+                  action: onOpenCareers,
+                },
+                {
+                  label: "Privacy Policy",
+                  action: onOpenPrivacy,
+                },
+              ].map((item) => (
+                <li key={item.label}>
+                  <button
+                    type="button"
+                    onClick={item.action}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+                  >
+                    {item.label}
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
@@ -91,7 +122,7 @@ export function Footer() {
             </span>
             <span className="h-1 w-1 rounded-full bg-muted-foreground" />
             <span className="text-xs text-primary font-medium">
-              v1.0
+              v2.0
             </span>
           </div>
         </div>

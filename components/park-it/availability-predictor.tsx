@@ -17,6 +17,8 @@ import {
   ChevronUp,
   Star,
   BarChart3,
+  Brain,
+  RefreshCw,
 } from "lucide-react";
 import {
   predictAvailability,
@@ -34,20 +36,6 @@ const DAYS = [
   "Thursday",
   "Friday",
   "Saturday",
-];
-
-const TRAFFIC_OPTIONS: { value: PredictionInput["trafficLevel"]; label: string; color: string }[] = [
-  { value: "low", label: "Light", color: "bg-primary/20 text-primary border-primary/30" },
-  { value: "moderate", label: "Moderate", color: "bg-yellow-400/20 text-yellow-400 border-yellow-400/30" },
-  { value: "heavy", label: "Heavy", color: "bg-destructive/20 text-destructive border-destructive/30" },
-];
-
-const EVENT_PRESETS = [
-  { label: "None", value: 0 },
-  { label: "Minor", value: 0.25 },
-  { label: "Moderate", value: 0.5 },
-  { label: "Major", value: 0.75 },
-  { label: "Festival", value: 1.0 },
 ];
 
 function confidenceColor(c: number) {
@@ -82,6 +70,18 @@ function formatHour(h: number) {
   if (h < 12) return `${h} AM`;
   return `${h - 12} PM`;
 }
+
+const TRAFFIC_COLORS = {
+  low: "bg-primary/10 text-primary border-primary/30",
+  moderate: "bg-yellow-400/10 text-yellow-400 border-yellow-400/30",
+  heavy: "bg-destructive/10 text-destructive border-destructive/30",
+};
+
+const TRAFFIC_LABELS = {
+  low: "Light",
+  moderate: "Moderate",
+  heavy: "Heavy",
+};
 
 // ---------- Card Component ----------
 
@@ -185,8 +185,9 @@ function PredictionCard({
       {/* Expanded details */}
       {expanded && (
         <div className="border-t border-border px-4 pb-4 pt-3 animate-fade-in">
-          <p className="text-xs font-medium text-muted-foreground mb-3">
-            Factor Analysis (Logistic Regression)
+          <p className="text-xs font-medium text-muted-foreground mb-3 flex items-center gap-1.5">
+            <Brain className="h-3 w-3 text-primary" />
+            AI Factor Analysis (Logistic Regression + Historical Open Data)
           </p>
           <div className="flex flex-col gap-2">
             {result.factors
@@ -220,7 +221,7 @@ function PredictionCard({
               {confidenceLabel(result.confidence)}
             </p>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
-              Based on {result.factors.length} features analyzed through logistic regression
+              Based on {result.factors.length} features analyzed through logistic regression on historical open data
             </p>
           </div>
         </div>
@@ -241,7 +242,6 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
   const [filterCity, setFilterCity] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"confidence" | "name" | "price">("confidence");
   const [visible, setVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setVisible(true);
@@ -269,9 +269,12 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
   const medAvail = predictions.filter((p) => p.confidence >= 40 && p.confidence < 70).length;
   const lowAvail = predictions.filter((p) => p.confidence < 40).length;
 
+  // Get AI-inferred traffic and event info from first prediction
+  const aiTraffic = predictions.length > 0 ? predictions[0].aiTrafficLevel : "low";
+  const aiEvents = predictions.length > 0 ? predictions[0].aiEventScore : 0;
+
   const cities = useMemo(() => {
     const set = new Set(predictions.map((p) => p.spot.city));
-    // Get all cities from full results
     const allResults = predictAvailability(input);
     for (const r of allResults) set.add(r.spot.city);
     return Array.from(set).sort();
@@ -285,7 +288,7 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
   );
 
   return (
-    <div ref={ref} className="flex h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-background">
       {/* Header */}
       <div className="glass z-10 border-b border-border px-4 py-3 sm:px-6">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
@@ -303,10 +306,10 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
             </div>
             <div>
               <h1 className="font-sans text-sm font-bold text-foreground sm:text-base">
-                Availability Predictor
+                AI Availability Predictor
               </h1>
               <p className="hidden text-[10px] text-muted-foreground sm:block">
-                Logistic regression-based parking confidence analysis
+                Powered by logistic regression on historical open datasets
               </p>
             </div>
           </div>
@@ -315,7 +318,7 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
 
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-          {/* Controls */}
+          {/* Controls - only time and day */}
           <div
             className={`rounded-xl border border-border bg-card p-4 sm:p-6 transition-all duration-500 ${
               visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
@@ -323,10 +326,10 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
           >
             <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
               <Activity className="h-4 w-4 text-primary" />
-              Model Input Parameters
+              Select Time & Day
             </h2>
 
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-5 sm:grid-cols-2">
               {/* Time of Day */}
               <div>
                 <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
@@ -368,53 +371,62 @@ export function AvailabilityPredictor({ onBack }: AvailabilityPredictorProps) {
                   ))}
                 </select>
               </div>
+            </div>
 
-              {/* Traffic Condition */}
-              <div>
-                <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <AlertTriangle className="h-3 w-3" />
-                  Traffic Condition
-                </label>
-                <div className="flex gap-1.5">
-                  {TRAFFIC_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => updateInput({ trafficLevel: opt.value })}
-                      className={`flex-1 rounded-lg border px-2 py-2 text-xs font-medium transition-all ${
-                        input.trafficLevel === opt.value
-                          ? opt.color
-                          : "border-border bg-secondary text-muted-foreground hover:border-border/80"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+            {/* AI-Inferred Parameters */}
+            <div className="mt-5 rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <h3 className="text-xs font-semibold text-foreground mb-3 flex items-center gap-1.5">
+                <Brain className="h-3.5 w-3.5 text-primary" />
+                AI-Inferred from Historical Open Data
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* AI Traffic */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[10px] text-muted-foreground">Traffic Condition</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${TRAFFIC_COLORS[aiTraffic]}`}>
+                        {TRAFFIC_LABELS[aiTraffic]}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Based on Gujarat traffic flow records
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Events */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                    <Zap className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1">
+                    <span className="text-[10px] text-muted-foreground">Event Density</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`rounded-md border px-2 py-0.5 text-xs font-medium ${
+                        aiEvents > 0.5
+                          ? "bg-destructive/10 text-destructive border-destructive/30"
+                          : aiEvents > 0.2
+                            ? "bg-yellow-400/10 text-yellow-400 border-yellow-400/30"
+                            : "bg-primary/10 text-primary border-primary/30"
+                      }`}>
+                        {aiEvents > 0.5 ? "High" : aiEvents > 0.2 ? "Moderate" : "Low"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Based on municipal event data
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Nearby Events */}
-              <div>
-                <label className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                  <Zap className="h-3 w-3" />
-                  Nearby Events
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {EVENT_PRESETS.map((ep) => (
-                    <button
-                      key={ep.label}
-                      type="button"
-                      onClick={() => updateInput({ nearbyEventScore: ep.value })}
-                      className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium transition-all ${
-                        Math.abs(input.nearbyEventScore - ep.value) < 0.01
-                          ? "border-primary/30 bg-primary/10 text-primary"
-                          : "border-border bg-secondary text-muted-foreground hover:border-border/80"
-                      }`}
-                    >
-                      {ep.label}
-                    </button>
-                  ))}
-                </div>
+              <div className="mt-3 flex items-center gap-1.5">
+                <RefreshCw className="h-3 w-3 text-primary" />
+                <span className="text-[10px] text-muted-foreground">
+                  Traffic and event patterns auto-analyzed from historical open datasets. Recalibrated daily.
+                </span>
               </div>
             </div>
           </div>

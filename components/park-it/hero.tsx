@@ -10,7 +10,7 @@ const STATS = [
   { label: "Secure Parking", value: "100%", icon: Shield },
 ];
 
-export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
+export function Hero({ onGetStarted, onExploreMap }: { onGetStarted: () => void; onExploreMap?: () => void }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -90,6 +90,7 @@ export function Hero({ onGetStarted }: { onGetStarted: () => void }) {
             </button>
             <button
               type="button"
+              onClick={onExploreMap}
               className="flex items-center gap-2 rounded-xl border border-border bg-transparent px-8 py-4 text-base font-semibold text-foreground transition-all hover:bg-secondary active:scale-95"
             >
               <Navigation className="h-4 w-4" />
